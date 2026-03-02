@@ -1,0 +1,6 @@
+.env
+.Rproj.user
+.Rhistory
+.RData
+*.html
+*.pdf
