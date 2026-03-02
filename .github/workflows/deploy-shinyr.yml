@@ -26,6 +26,11 @@ jobs:
           r-version: '4.5.2'
           use-public-rspm: true
 
+      # App expects .env (gitignored). Create placeholder so publish succeeds.
+      # Set API_KEY and OLLAMA_API_KEY as env vars in Posit Connect content settings.
+      - name: Create placeholder .env for bundle
+        run: touch alphavantage_reporter_app/.env
+
       - name: Publish to Posit Connect
         uses: rstudio/actions/connect-publish@main
         with:
