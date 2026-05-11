@@ -10,6 +10,7 @@
 
 ## 0.1 Load Packages #################################
 
+import ast  # literal_eval for model-sent Python-ish dict strings
 import requests  # for HTTP requests
 import json      # for working with JSON
 import pandas as pd  # for data manipulation
@@ -38,18 +39,47 @@ def add_two_numbers(x, y):
 def get_table(df):
     """
     Convert a pandas DataFrame into a markdown table.
-    
+
     Parameters:
     -----------
-    df : pandas.DataFrame
-        The DataFrame to convert to a markdown table
-    
+    df : pandas.DataFrame or dict
+        The DataFrame to convert (the LLM often passes a dict from JSON)
+
     Returns:
     --------
     str
         Markdown-formatted table string
     """
+    if isinstance(df, str):
+        try:
+            df = ast.literal_eval(df.strip())
+        except (ValueError, SyntaxError):
+            df = json.loads(df)
+    if isinstance(df, dict):
+        df = pd.DataFrame(df)
+    elif isinstance(df, list):
+        df = pd.DataFrame(df)
     return df.to_markdown(index=False)
+
+
+def calculate_average(numbers):
+    """
+    Compute the arithmetic mean of a list of numbers.
+
+    Parameters:
+    -----------
+    numbers : list of float
+        Values to average (non-empty list; empty list returns 0.0)
+
+    Returns:
+    --------
+    float
+        Mean of the numbers
+    """
+    if not numbers:
+        return 0.0
+    return sum(numbers) / len(numbers)
+
 
 # 2. DEFINE TOOL METADATA ###################################
 
@@ -95,6 +125,26 @@ tool_get_table = {
     }
 }
 
+# Tool metadata for calculate_average
+tool_calculate_average = {
+    "type": "function",
+    "function": {
+        "name": "calculate_average",
+        "description": "Calculate the arithmetic mean of a list of numbers",
+        "parameters": {
+            "type": "object",
+            "required": ["numbers"],
+            "properties": {
+                "numbers": {
+                    "type": "array",
+                    "items": {"type": "number"},
+                    "description": "Numeric values to include in the average",
+                }
+            },
+        },
+    },
+}
+
 # 3. EXAMPLE 1: STANDARD CHAT (NO TOOLS) ###################################
 
 # Trying to call a standard chat without tools
@@ -104,7 +154,7 @@ messages = [
 ]
 
 resp = agent(messages=messages, model=MODEL, output="text")
-print("📝 Standard Chat Response:")
+print("Standard Chat Response:")
 print(resp)
 print()
 
@@ -116,7 +166,7 @@ messages = [
 ]
 
 resp = agent(messages=messages, model=MODEL, output="tools", tools=[tool_add_two_numbers])
-print("🔧 Tool Call #1 Result:")
+print("Tool Call #1 Result:")
 print(resp)
 print()
 
@@ -137,14 +187,34 @@ messages = [
 ]
 
 resp2 = agent(messages=messages, model=MODEL, output="tools", tools=[tool_get_table])
-print("🔧 Tool Call #2 Result:")
+print("Tool Call #2 Result:")
 print(resp2)
 print()
 
 # Compare against manual approach
-print("📊 Manual Table Creation:")
+print("Manual Table Creation:")
 manual_table = df.to_markdown(index=False)
 print(manual_table)
 print()
+
+# 6. EXAMPLE 4: TOOL CALL #3 (CALCULATE AVERAGE) ###################################
+
+messages = [
+    {"role": "user", "content": "What is the average of 10, 20, and 30?"},
+]
+
+resp3 = agent(
+    messages=messages,
+    model=MODEL,
+    output="tools",
+    tools=[tool_calculate_average],
+)
+print("Tool Call #3 Result:")
+print(resp3)
+print()
+
+if isinstance(resp3, list) and len(resp3) > 0:
+    print(f"Tool output: {resp3[0].get('output', 'No output')}")
+    print()
 
 # Note: We can use the agent() function to rapidly build and test out agents with or without tools.

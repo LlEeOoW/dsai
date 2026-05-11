@@ -9,6 +9,7 @@
 
 ## 0.1 Load Packages #################################
 
+import inspect  # to resolve tool functions defined in the caller's module
 import requests  # for HTTP requests
 import json      # for working with JSON
 import pandas as pd  # for data manipulation
@@ -24,12 +25,22 @@ PORT = 11434
 OLLAMA_HOST = f"http://localhost:{PORT}"
 CHAT_URL = f"{OLLAMA_HOST}/api/chat"
 
+
+def _lookup_tool_function(func_name):
+    """Find a callable tool by name in the caller chain (scripts import agent from this module)."""
+    for frame_info in inspect.stack()[1:]:
+        candidate = frame_info.frame.f_globals.get(func_name)
+        if callable(candidate):
+            return candidate
+    return globals().get(func_name)
+
+
 # 1. AGENT FUNCTION ###################################
 
 def agent(messages, model=DEFAULT_MODEL, output="text", tools=None, all=False):
     """
     Agent wrapper function that runs a single agent, with or without tools.
-    
+
     Parameters:
     -----------
     messages : list
@@ -43,13 +54,13 @@ def agent(messages, model=DEFAULT_MODEL, output="text", tools=None, all=False):
         List of tool metadata dictionaries for function calling
     all : bool
         If True, return all responses. If False, return only the last response.
-    
+
     Returns:
     --------
     str or list
         The agent's response(s)
     """
-    
+
     # If the agent has NO tools, perform a standard chat
     if tools is None:
         body = {
@@ -57,11 +68,11 @@ def agent(messages, model=DEFAULT_MODEL, output="text", tools=None, all=False):
             "messages": messages,
             "stream": False
         }
-        
+
         response = requests.post(CHAT_URL, json=body)
         response.raise_for_status()
         result = response.json()
-        
+
         return result["message"]["content"]
     else:
         # If the agent has tools, perform a tool call
@@ -71,32 +82,33 @@ def agent(messages, model=DEFAULT_MODEL, output="text", tools=None, all=False):
             "tools": tools,
             "stream": False
         }
-        
+
         response = requests.post(CHAT_URL, json=body)
         response.raise_for_status()
         result = response.json()
-        
+
         # For any given tool call, execute the tool call
-        if "tool_calls" in result.get("message", {}):
-            tool_calls = result["message"]["tool_calls"]
+        tool_calls = result.get("message", {}).get("tool_calls")
+        if tool_calls:
             for tool_call in tool_calls:
                 # Execute the tool function
-                # Note: Tool functions must be defined in the global scope
+                # Note: Tool functions live in the calling script's module, not in functions.py
                 func_name = tool_call["function"]["name"]
-                func_args = json.loads(tool_call["function"]["arguments"])
-                
-                # Get the function from globals and execute it
-                func = globals().get(func_name)
+                raw_args = tool_call["function"]["arguments"]
+                func_args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+
+                func = _lookup_tool_function(func_name)
                 if func:
-                    output = func(**func_args)
-                    tool_call["output"] = output
-        
+                    # Name must not shadow the output= parameter ("tools" vs "text")
+                    tool_result = func(**func_args)
+                    tool_call["output"] = tool_result
+
         if all:
             return result
         else:
             # When output="tools", return the tool_calls list with outputs
             # When output="text", return the last tool call output or message content
-            if "tool_calls" in result.get("message", {}):
+            if tool_calls:
                 if output == "tools":
                     return tool_calls
                 else:
@@ -107,7 +119,7 @@ def agent(messages, model=DEFAULT_MODEL, output="text", tools=None, all=False):
 def agent_run(role, task, tools=None, output="text", model=DEFAULT_MODEL):
     """
     Run an agent with a specific role and task.
-    
+
     Parameters:
     -----------
     role : str
@@ -120,19 +132,19 @@ def agent_run(role, task, tools=None, output="text", model=DEFAULT_MODEL):
         Output format (default: "text")
     model : str
         Model to use (default: DEFAULT_MODEL)
-    
+
     Returns:
     --------
     str
         The agent's response
     """
-    
+
     # Define the messages to be sent to the agent
     messages = [
         {"role": "system", "content": role},
         {"role": "user", "content": task}
     ]
-    
+
     # Run the agent
     resp = agent(messages=messages, model=model, output=output, tools=tools)
     return resp
@@ -143,18 +155,18 @@ def agent_run(role, task, tools=None, output="text", model=DEFAULT_MODEL):
 def df_as_text(df):
     """
     Convert a pandas DataFrame to a markdown table string.
-    
+
     Parameters:
     -----------
     df : pandas.DataFrame
         The DataFrame to convert to text
-    
+
     Returns:
     --------
     str
         A markdown-formatted table string
     """
-    
+
     # Convert DataFrame to markdown table
     # pandas to_markdown() method creates markdown tables
     tab = df.to_markdown(index=False)

@@ -43,17 +43,18 @@ load_dotenv()
 # _ = runpy.run_path(ollama_script_path)
 
 # 0.4 Set the server URL #################################
-# Set the server URL
-# You can use your local API (if you execut runme.py)
-# SERVER = "http://127.0.0.1:8000/mcp"
-# Or you can use my deployed API (or update to yours), assuming you provide a Posit Connect viewer API key.
-SERVER = "https://connect.systems-apps.com/fastapimcp/mcp"
+# Local lab default — override with env MCP_SERVER or edit below.
+SERVER = os.environ.get("MCP_SERVER", "http://127.0.0.1:8000/mcp")
 
 # ── Helper: send one JSON-RPC request ───────────────────────
 
 def mcp_request(method, params=None, id=1):
     body = {"jsonrpc": "2.0", "id": id, "method": method, "params": params or {}}
-    resp = requests.post(SERVER, json=body, headers={"Authorization": f"Key {os.getenv('CONNECT_API_KEY')}"})
+    headers = {"Content-Type": "application/json"}
+    key = os.getenv("CONNECT_API_KEY") or ""
+    if key.strip():
+        headers["Authorization"] = f"Key {key}"
+    resp = requests.post(SERVER, json=body, headers=headers)
     resp.raise_for_status()
     return resp.json().get("result")
 
@@ -90,6 +91,15 @@ result = mcp_request("tools/call", {
 
 print(result["content"][0]["text"])
 
+# 3b. CALL SECOND TOOL — filter_cars_by_mpg (Stage 3) ############################
+print("# 3b. CALL SECOND TOOL — filter_cars_by_mpg ############################")
+
+result2 = mcp_request("tools/call", {
+    "name": "filter_cars_by_mpg",
+    "arguments": {"min_mpg": 25},
+})
+print(result2["content"][0]["text"])
+
 
 # 4. CONNECT AN LLM TO THE MCP SERVER ####################
 print("# 4. CONNECT AN LLM TO THE MCP SERVER ####################")
@@ -123,9 +133,9 @@ def ollama_is_running():
 print("# 4a. FETCH TOOL METADATA FROM THE SERVER ####################")
 tools_raw = mcp_request("tools/list")["tools"]
 
-## 4b. Convert MCP format → Ollama format ----------------
+## 4b. Convert MCP format -> Ollama format ----------------
 # MCP uses inputSchema; Ollama uses parameters — they're the same structure.
-print("# 4b. CONVERT MCP FORMAT → OLLAMA FORMAT ####################")
+print("# 4b. CONVERT MCP FORMAT -> OLLAMA FORMAT ####################")
 
 
 def mcp_to_ollama(tool):
@@ -148,7 +158,7 @@ if not ollama_is_running():
 else:
     ## 4c. Ask the LLM a question that requires the tool -----
     print("# 4c. ASK THE LLM A QUESTION THAT REQUIRES THE TOOL ####################")
-    messages = [{"role": "user", "content": "Give me a summary of the mtcars dataset."}]
+    messages = [{"role": "user", "content": "Using only the available tools, list mtcars cars with mpg greater than 25."}]
 
     body = {"model": MODEL, "messages": messages, "tools": ollama_tools, "stream": False}
     resp = requests.post(CHAT_URL, json=body)

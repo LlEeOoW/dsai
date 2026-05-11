@@ -8,6 +8,12 @@
 
 # 0. SETUP ###################################
 
+# Set working directory to script location so 04_rules.yaml and functions are found
+# when run via Code Runner or python from any folder
+import os
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(_script_dir)
+
 ## 0.1 Load Packages #################################
 
 import pandas as pd  # for data manipulation
@@ -24,7 +30,8 @@ from functions import agent_run, get_shortages, df_as_text
 
 # 1. CONFIGURATION ###################################
 
-# Select model of interest
+# Select model of interest (must be pulled first: run in terminal: ollama pull smollm2:135m)
+# If you get 404, run: ollama pull smollm2:135m  or use e.g. MODEL = "llama3.2:3b"
 MODEL = "smollm2:135m"
 
 # 2. LOAD RULES FROM YAML ###################################
@@ -88,7 +95,7 @@ data = get_shortages(category=input_category["category"], limit=500)
 # Filter for items that are currently unavailable
 stat = (data
         .groupby("generic_name")
-        .apply(lambda x: x.loc[x["update_date"].idxmax()])
+        .apply(lambda x: x.loc[x["update_date"].idxmax()], include_groups=False)
         .reset_index(drop=True)
         .query("availability == 'Unavailable'"))
 

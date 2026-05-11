@@ -36,20 +36,40 @@ CHAT_URL = f"{OLLAMA_HOST}/api/chat"
 def add_two_numbers(x, y):
     """
     Add two numbers together.
-    
+
     Parameters:
     -----------
     x : float
         First number
     y : float
         Second number
-    
+
     Returns:
     --------
     float
         Sum of x and y
     """
     return x + y
+
+
+def multiply_numbers(x, y):
+    """
+    Multiply two numbers together.
+
+    Parameters:
+    -----------
+    x : float
+        First number
+    y : float
+        Second number
+
+    Returns:
+    --------
+    float
+        Product of x and y
+    """
+    return x * y
+
 
 # 2. DEFINE TOOL METADATA ###################################
 
@@ -77,18 +97,41 @@ tool_add_two_numbers = {
     }
 }
 
+# Tool metadata for multiply_numbers (same pattern: name must match the function)
+tool_multiply_numbers = {
+    "type": "function",
+    "function": {
+        "name": "multiply_numbers",
+        "description": "Multiply two numbers",
+        "parameters": {
+            "type": "object",
+            "required": ["x", "y"],
+            "properties": {
+                "x": {
+                    "type": "number",
+                    "description": "first number"
+                },
+                "y": {
+                    "type": "number",
+                    "description": "second number"
+                }
+            }
+        }
+    }
+}
+
 # 3. CREATE CHAT REQUEST WITH TOOLS ###################################
 
 # Create a simple chat history with a user question that will require the tool
 messages = [
-    {"role": "user", "content": "What is 3 + 2?"}
+    {"role": "user", "content": "What is 3 times 4?"}
 ]
 
 # Build the request body with tools
 body = {
     "model": MODEL,
     "messages": messages,
-    "tools": [tool_add_two_numbers],
+    "tools": [tool_add_two_numbers, tool_multiply_numbers],
     "stream": False
 }
 
@@ -103,12 +146,13 @@ result = response.json()
 # The LLM will return a tool_calls array with the function name and arguments
 if "tool_calls" in result.get("message", {}):
     tool_calls = result["message"]["tool_calls"]
-    
+
     # Execute each tool call
     for tool_call in tool_calls:
         func_name = tool_call["function"]["name"]
-        func_args = json.loads(tool_call["function"]["arguments"])
-        
+        raw_args = tool_call["function"]["arguments"]
+        func_args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+
         # Get the function from globals and execute it
         func = globals().get(func_name)
         if func:

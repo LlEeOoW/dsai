@@ -13,14 +13,27 @@
 # If you haven't already, install required packages:
 # pip install pandas
 
+import sys
+import io
+
+# Windows/Code Runner: avoid UnicodeEncodeError on cp1252 consoles (emoji in prints)
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+
 import pandas as pd  # for data wrangling
 import re  # for string pattern matching and text analysis
+from pathlib import Path
 
 ## 0.2 Load Sample Text #################################
 
-# Load sample AI-generated report text
+# Load sample AI-generated report text (path works from repo root or this script's folder)
+_sample_path = Path(__file__).resolve().parent / "data" / "sample_reports.txt"
+
 # This text should be checked for quality and accuracy
-with open("09_text_analysis/data/sample_reports.txt", "r", encoding="utf-8") as f:
+with open(_sample_path, "r", encoding="utf-8") as f:
     sample_text = f.read()
 
 # Split text into individual reports (reports are separated by blank lines)
@@ -30,7 +43,7 @@ reports = [r.strip() for r in sample_text.split("\n\n") if r.strip()]
 # Select the first report for quality control
 report = reports[0]
 
-print("📝 Sample Report for Quality Control:")
+print("[Sample Report] Quality Control:")
 print("---")
 print(report)
 print("---\n")
@@ -55,7 +68,7 @@ for concept in required_concepts:
 
 concept_counts_df = pd.DataFrame(concept_counts)
 
-print("📊 Concept Counts:")
+print("Concept Counts:")
 print(concept_counts_df)
 print()
 
@@ -93,14 +106,14 @@ quality_checks = pd.DataFrame({
 
 # Add status column
 quality_checks["status"] = quality_checks.apply(
-    lambda row: "✅ PASS" if (
+    lambda row: "PASS" if (
         (row["check"] in ["Contains numbers", "Contains percentages", "Contains recommendations"] and row["result"]) or
         (row["check"] not in ["Contains numbers", "Contains percentages", "Contains recommendations"] and not row["result"])
-    ) else "❌ FAIL",
+    ) else "FAIL",
     axis=1
 )
 
-print("✅ Quality Control Checks:")
+print("Quality Control Checks:")
 print(quality_checks)
 print()
 
@@ -135,7 +148,7 @@ text_metrics = pd.DataFrame({
     ]
 })
 
-print("📈 Text Metrics:")
+print("Text Metrics:")
 print(text_metrics)
 print()
 
@@ -160,7 +173,7 @@ quality_results = pd.DataFrame({
     "percentage_count": [percentage_count]
 })
 
-print("📋 Comprehensive Quality Control Results:")
+print("Comprehensive Quality Control Results:")
 print(quality_results)
 print()
 
@@ -168,7 +181,7 @@ print()
 
 # If you have multiple reports, you can check them all at once
 if len(reports) > 1:
-    print("🔄 Performing Quality Control on Multiple Reports...\n")
+    print("Performing Quality Control on Multiple Reports...\n")
     
     # Create a function to check a single report
     def check_report(text, report_id):
@@ -213,9 +226,9 @@ if len(reports) > 1:
         for i in range(len(reports))
     ], ignore_index=True)
     
-    print("📊 Quality Control Results for All Reports:")
+    print("Quality Control Results for All Reports:")
     print(all_results)
     print()
 
-print("✅ Manual quality control complete!")
-print("💡 Next step: Use AI quality control (02_ai_quality_control.py) to automate this process.")
+print("Manual quality control complete.")
+print("Next step: Use AI quality control (02_ai_quality_control.py) to automate this process.")

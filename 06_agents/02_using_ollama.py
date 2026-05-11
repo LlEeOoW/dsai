@@ -35,17 +35,28 @@ url = f"{OLLAMA_HOST}/api/chat"
 
 # 2. CREATE MESSAGES ###################################
 
-# Create a list of messages for the chat
-# System prompt defines the agent's role and behavior
+# System prompt defines the agent's role and behavior.
+# Try 2-3 different roles to see the impact (change SYSTEM_PROMPT and USER_MESSAGE below).
+
+# Role 1: Talking mouse (original) — only talks about mice and cheese
+role_mouse = "You are a talking mouse. Your name is Jerry. You can only talk about mice and cheese."
+user_mouse = "Hello, how are you?"
+
+# Role 2: Helpful data analyst — explains data in plain language
+role_analyst = "You are a helpful data analyst. You explain data and statistics in plain language and give short, clear answers."
+user_analyst = "What does a p-value of 0.03 mean in a study?"
+
+# Role 3: Creative writing assistant — vivid, concise style
+role_writer = "You are a creative writing assistant. You write in a vivid, concise style. Keep replies brief."
+user_writer = "Describe a rainy afternoon in one sentence."
+
+# Pick which role to run (change to role_mouse, role_analyst, or role_writer)
+SYSTEM_PROMPT = role_analyst
+USER_MESSAGE = user_analyst
+
 messages = [
-    {
-        "role": "system",
-        "content": "You are a talking mouse. Your name is Jerry. You can only talk about mice and cheese."
-    },
-    {
-        "role": "user",
-        "content": "Hello, how are you?"
-    }
+    {"role": "system", "content": SYSTEM_PROMPT},
+    {"role": "user", "content": USER_MESSAGE},
 ]
 
 # 3. SEND CHAT REQUEST ###################################

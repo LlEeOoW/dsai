@@ -1,5 +1,15 @@
 # 03_agents.R
 
+# Set working directory to script location so source("functions.R") is found when run via Code Runner
+args = commandArgs(trailingOnly = FALSE)
+match = grep("^--file=", args)
+if (length(match) > 0) {
+  script_path = sub("^--file=", "", args[match])
+  if (nzchar(script_path) && file.exists(script_path)) {
+    setwd(dirname(normalizePath(script_path)))
+  }
+}
+
 # Load packages
 library(dplyr)
 library(stringr)

@@ -15,9 +15,20 @@ library(httr2)    # For HTTP requests
 library(jsonlite) # For working with JSON
 
 # Load environment variables from .env file
-# readRenviron() is a built-in R function that reads .env files
-# No external package needed!
-if (file.exists(".env")){  readRenviron(".env")  } else {  warning(".env file not found. Make sure it exists in the project root.") }
+# Look in current directory, then script directory (03_query_ai), then parent
+env_path = NULL
+if (file.exists(".env")) {
+  env_path = ".env"
+} else if (file.exists("03_query_ai/.env")) {
+  env_path = "03_query_ai/.env"
+} else if (file.exists("../.env")) {
+  env_path = "../.env"
+}
+if (!is.null(env_path)) {
+  readRenviron(env_path)
+} else {
+  warning(".env file not found. Put .env in project root or in 03_query_ai with OLLAMA_API_KEY=...")
+}
 
 # Get API key from environment variable
 OLLAMA_API_KEY = Sys.getenv("OLLAMA_API_KEY")

@@ -2,6 +2,20 @@
 
 # This script contains functions used for multi-agent orchestration in R.
 
+# Parse tool arguments: Ollama may return JSON text or a list (ollamar imports jsonlite)
+parse_tool_arguments = function(args) {
+    if (is.null(args)) {
+        stop("Tool call has no arguments.")
+    }
+    if (is.character(args) && length(args) == 1L) {
+        args = jsonlite::fromJSON(args, simplifyVector = TRUE)
+    }
+    if (!is.list(args)) {
+        args = as.list(args)
+    }
+    args
+}
+
 #' @name agent
 #' @title Agent Wrapper Function
 #' @description A helper wrapper function that will run a single agent, with or without tools.
@@ -15,7 +29,7 @@
 #' @note If the agent has NO tools, perform a standard chat.
 #' @importFrom ollamar chat
 #' @return A list of responses from the agent.
-#' @export 
+#' @export
 agent = function(messages, model = "smollm2:1.7b", output = "text", tools = NULL, all = FALSE){
 
     # # Testing values
@@ -41,8 +55,8 @@ agent = function(messages, model = "smollm2:1.7b", output = "text", tools = NULL
     #         )
     #     )
     # )
-    # tools = list(tool_add_two_numbers); 
-    # model = "smollm2:1.7b"; 
+    # tools = list(tool_add_two_numbers);
+    # model = "smollm2:1.7b";
     # output = "tools";
 
     # If the agent has NO tools, perform a standard chat
@@ -50,18 +64,18 @@ agent = function(messages, model = "smollm2:1.7b", output = "text", tools = NULL
         resp = chat(model = model, messages = messages, output = output, stream = FALSE)
         return(resp)
     } else {
-        
+
     # If the agent has any tools, perform a tool call
     resp = chat(model = model, messages = messages, tools = tools, output = output, stream = FALSE)
 
     # For any given tool call, execute the tool call
     n_resp = length(resp)
-    if(n_resp > 0){
-    for(i in 1:n_resp) {
-    # i = 1
-    # Save the result of the tool call in an 'output' field 
-    resp[[i]]$output = do.call(resp[[i]]$name, resp[[i]]$arguments)
+    if (n_resp == 0L) {
+        stop("No tool calls returned. Check that Ollama is running and the model supports tools.")
     }
+    for (i in 1:n_resp) {
+        # Save the result of the tool call in an 'output' field
+        resp[[i]]$output = do.call(resp[[i]]$name, parse_tool_arguments(resp[[i]]$arguments))
     }
     if(all) { return(resp) } else { return(resp[[n_resp]]$output) }
     }
@@ -70,7 +84,7 @@ agent = function(messages, model = "smollm2:1.7b", output = "text", tools = NULL
 
 agent_run = function(role, task, tools = NULL, output = "text",model = MODEL){
   # Testing values
-  # role = role2; task = df_as_text(result1); 
+  # role = role2; task = df_as_text(result1);
   # tools = NULL; output = "text"; model = MODEL;
 
   # Define the messages to be sent to the agent

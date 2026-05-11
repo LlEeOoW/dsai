@@ -3,7 +3,21 @@
 # This script demonstrates how to use rules in an agentic workflow to make agents more precise.
 # Rules are incorporated into the agent's role/system message to guide behavior.
 
-# Load packages
+# Set working directory to script location so source("functions.R") and 04_rules.yaml are found
+# when run via Rscript or Code Runner from any folder
+args = commandArgs(trailingOnly = FALSE)
+match = grep("^--file=", args)
+if (length(match) > 0) {
+  script_path = sub("^--file=", "", args[match])
+  if (nzchar(script_path) && file.exists(script_path)) {
+    setwd(dirname(normalizePath(script_path)))
+  }
+}
+
+# Load packages (install ollamar from CRAN if missing)
+if (!requireNamespace("ollamar", quietly = TRUE)) {
+  install.packages("ollamar", repos = "https://cloud.r-project.org")
+}
 library(dplyr)
 library(stringr)
 library(httr2)
@@ -15,7 +29,8 @@ library(yaml)
 
 source("functions.R")
 
-# Select model of interest
+# Select model of interest (must be pulled first: run in terminal: ollama pull smollm2:135m)
+# If 404 error, pull with: ollama pull smollm2:135m  or use e.g. MODEL = "llama3.2:3b"
 MODEL = "smollm2:135m"
 
 # =============================================================================

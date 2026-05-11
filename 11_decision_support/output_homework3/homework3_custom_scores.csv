@@ -1,0 +1,31 @@
+prompt_id,report_id,evidence_use,decision_usefulness,constraint_awareness,readability,policy_alignment,pass_minimum_quality,details,custom_overall
+A,1,5,4,4,5,5,TRUE,The report effectively uses data (percentages) to support recommendations for policy interventions regarding light trucks and cars. It's clear and concise.,4.6
+A,2,5,4,4,5,5,TRUE,"The report uses specific emission percentages to support recommendations for policy focus, clearly outlining the key contributors to PM10 emissions in White County.",4.6
+A,3,5,4,4,5,5,TRUE,"The report uses specific percentages to demonstrate the major sources of PM10 emissions and recommends targeted actions, demonstrating a useful and well-reasoned assessment.",4.6
+A,4,5,4,4,5,5,TRUE,"The report uses data (emission percentages) to justify targeted policy interventions. Recommendations align with findings, addressing major emission sources effectively.",4.6
+A,5,5,4,4,5,5,TRUE,"The report effectively uses data (51.8%, 36.1%, 87.9%) to identify key emission sources and recommends targeted policies, exhibiting clear communication and cautious framing.",4.6
+A,6,5,4,4,5,5,TRUE,"The report uses specific percentages from data to identify key emission sources and recommends targeted interventions, demonstrating a clear link between findings and action.",4.6
+A,7,5,4,4,5,5,TRUE,"The report uses quantitative data to support recommendations for policy changes regarding vehicle emissions. Clear and concise, it effectively links findings to actionable steps.",4.6
+A,8,5,4,4,5,5,TRUE,"The report effectively uses data (51.8%, 36.1%, 87.9%) to identify key emission sources and propose targeted policy recommendations for effective reduction.",4.6
+A,9,5,4,4,5,5,TRUE,"The report uses specific percentages from data to support recommendations. It's clear, concise, and actionable, aligning interventions with the identified emission sources.",4.6
+A,10,5,4,4,5,5,TRUE,"The report effectively uses data (percentages) to support targeted policy recommendations. Clarity and alignment are high, offering actionable insights for emission reduction.",4.6
+B,1,5,4,4,5,5,TRUE,"The report clearly presents data (51.8%, 36.1%) and recommends focusing on high-impact vehicle categories. It's well-written and provides actionable insights.",4.6
+B,2,5,4,4,5,5,TRUE,"The report uses specific percentages to identify key PM10 sources and suggests targeted reduction efforts, aligning with actionable recommendations. Clear and concise.",4.6
+B,3,4,4,3,5,5,TRUE,"The report provides specific emission percentages, supporting targeted policy recommendations. It's clearly stated and directly relates to actionable steps.",4.2
+B,4,4,4,3,5,5,TRUE,"The report clearly highlights key emission sources (light trucks and cars/bikes) and proposes a targeted strategy for impactful reduction, aligning with practical action.",4.2
+B,5,5,4,4,5,5,TRUE,The report clearly presents data on PM10 sources and proposes a targeted reduction strategy. It's concise and well-structured.,4.6
+B,6,4,4,3,5,5,TRUE,"Report effectively uses data on emissions percentages to suggest prioritizing policy intervention for light trucks and cars/bikes, offering clear actionable insights.",4.2
+B,7,5,4,4,5,5,TRUE,"The report clearly presents a key finding (PM10 emissions by vehicle type) and suggests a targeted approach for maximum impact, supporting policy recommendations.",4.6
+B,8,5,4,4,5,5,TRUE,"The report clearly identifies key sources and percentages, suggesting actionable targets for PM10 reduction, demonstrating a practical and well-supported recommendation.",4.6
+B,9,4,4,3,5,5,TRUE,"The report uses data (emission percentages) to suggest prioritized policy intervention, offering a clear basis for action and aligning with emission reduction goals.",4.2
+B,10,5,4,4,5,5,TRUE,"The report leverages a clear statistic (51.8%) to highlight a key emissions source, supporting targeted interventions for maximum impact.",4.6
+C,1,5,4,4,5,5,TRUE,"The report uses specific data (51.8%, 36.1%) to justify a clear recommendation: prioritize Light Trucks and Cars/Bikes for pollution reduction efforts.",4.6
+C,2,5,4,4,5,5,TRUE,"The report effectively uses data (51.8%, 36.1%) to support targeted recommendations. Clear, concise language makes it understandable for a broad audience.",4.6
+C,3,5,4,4,5,5,TRUE,"Report effectively uses specific emissions data (51.8%, 36.1%, 87.9%) to recommend targeted action, acknowledging limited impact from other vehicle types. Clear and concise.",4.6
+C,4,5,4,4,5,5,TRUE,"The report uses concrete data (51.8%, 36.1%) to support recommendations for reducing emissions by prioritizing Light Trucks and Cars/Bikes.",4.6
+C,5,5,4,4,5,5,TRUE,"The report effectively uses data (51.8%, 36.1%) to recommend targeting light trucks and cars/bikes for emissions reduction. Clear and concise language ensures accessibility.",4.6
+C,6,5,4,4,5,5,TRUE,"Report uses specific data percentages to highlight key emission sources and recommends targeted action, demonstrating clear insights and actionable recommendations.",4.6
+C,7,5,4,4,5,5,TRUE,"The report effectively uses data (51.8%, 36.1%) to support a clear recommendation for prioritizing Light Trucks and Cars/Bikes for pollution reduction efforts.",4.6
+C,8,5,4,4,5,5,TRUE,"The report clearly presents data-driven findings, suggesting targeted policy interventions for light trucks and cars/bikes, demonstrating a useful and well-reasoned assessment.",4.6
+C,9,5,4,4,5,5,TRUE,"Strongly supported by specific data (51.8%, 36.1%, 87.9%) highlighting key emission sources for targeted action and clear recommendations.",4.6
+C,10,5,4,4,5,5,TRUE,"The report utilizes specific data percentages (51.8%, 36.1%) to support recommendations for targeting light trucks and cars/bikes for emissions reduction. Clear and concise.",4.6

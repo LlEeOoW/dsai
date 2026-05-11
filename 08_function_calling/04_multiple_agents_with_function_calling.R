@@ -1,25 +1,34 @@
-# 05_multiple_agents.R
+# 04_multiple_agents_with_function_calling.R
+# Run from repo root: Rscript 08_function_calling/04_multiple_agents_with_function_calling.R
+# Or set working directory to 08_function_calling first.
 
-# Load packages
-library(dplyr)
-library(stringr)
-library(httr2)
-library(jsonlite)
-library(ollamar)
-library(purrr)
-library(lubridate)
+args = commandArgs(trailingOnly = FALSE)
+match = grep("^--file=", args)
+if (length(match) > 0) {
+  script_path = sub("^--file=", "", args[match])
+  if (nzchar(script_path) && file.exists(script_path)) {
+    setwd(dirname(normalizePath(script_path)))
+  }
+}
 
-source("08_agents/functions.R")
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(stringr)
+  library(httr2)
+  library(jsonlite)
+  library(ollamar)
+  library(purrr)
+  library(lubridate)
+})
+
+MODEL = "smollm2:1.7b"
+source("functions.R")
 
 # In this script, we will build a graph of agents and their interactions,
 # to query data, perform analysis, and interpret it.
 
 # We will use the FDA Drug Shortages API to get data on drug shortages.
 # https://open.fda.gov/apis/drug/drugshortages/
-
-# Select model of interest
-MODEL = "smollm2:1.7b"
-
 
 get_shortages = function(category = "Psychiatry", limit = 500){
   # Testing values
@@ -42,9 +51,20 @@ get_shortages = function(category = "Psychiatry", limit = 500){
     # Parse the response as JSON
     data = resp_body_json(resp)
 
+    res = data$results
+    if (is.null(res) || length(res) == 0L) {
+      return(tibble(
+        therapeutic_category = character(),
+        generic_name = character(),
+        update_type = character(),
+        update_date = as.Date(character()),
+        availability = character(),
+        related_info = character()
+      ))
+    }
+
     # Process the data into a tidy dataframe
-    processed_data = data |> 
-      with(results) |> 
+    processed_data = res |>
       map_dfr(~tibble(
         therapeutic_category = paste0(.x$therapeutic_category, collapse = ", "),
         generic_name = .x$generic_name,
@@ -117,11 +137,32 @@ task = "Get data on drug shortages for the category Psychiatry"
 role1 = "I fetch information from the FDA Drug Shortages API"
 result1 = agent_run(role = role1, task = task, model = MODEL, output = "tools", tools = list(tool_get_shortages))
 
-role2 = "I analyze data in a table format and return a markdown table of currently ongoing shortages."
-result2 = agent_run(role =  role2, task = df_as_text(result1), model = MODEL, output = "text", tools = NULL)
+cat("\n--- Agent 1 (tool) -> tabular result (head) ---\n")
+print(head(result1, 10L))
 
+role2 = paste(
+  "You are a data analyst. The user lists FDA drug shortage lines (drug | update | availability).",
+  "Reply with 3-6 bullet points summarizing patterns (which drugs, mostly revised or reverified, availability).",
+  sep = " "
+)
+r1 = head(result1, 25)
+lines = with(r1, paste(generic_name, update_type, availability, sep = " | "))
+task2 = paste0(
+  "Records:\n",
+  paste(lines, collapse = "\n")
+)
+result2 = agent_run(role = role2, task = task2, model = MODEL, output = "text", tools = NULL)
 
-role3 = "I write a 1-page press release on the currently ongoing shortages."
+cat("\n--- Agent 2 (analysis) ---\n")
+cat(result2, sep = "\n")
+
+role3 = paste(
+  "You are a communications writer. Write a short press release (3-5 sentences)",
+  "based only on the analysis paragraph you receive. Do not add facts not in the analysis.",
+  sep = " "
+)
 result3 = agent_run(role = role3, task = result2, model = MODEL, output = "text", tools = NULL)
 
+cat("\n--- Agent 3 (press release) ---\n")
+cat(result3, sep = "\n")
 

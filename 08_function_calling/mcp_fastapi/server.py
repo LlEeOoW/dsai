@@ -42,7 +42,21 @@ TOOLS = [
             },
             "required": ["dataset_name"],
         },
-    }
+    },
+    {
+        "name": "filter_cars_by_mpg",
+        "description": "Return up to 15 rows from mtcars where mpg is strictly greater than min_mpg.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "min_mpg": {
+                    "type": "number",
+                    "description": "Keep rows with mpg greater than this value.",
+                }
+            },
+            "required": ["min_mpg"],
+        },
+    },
 ]
 
 # ── Tool logic (same datasets as R: mtcars, iris via Rdatasets CSV) ──
@@ -65,6 +79,12 @@ def run_tool(name: str, args: dict) -> str:
         summary.index.name = "variable"
         summary.columns = ["mean", "sd", "min", "max"]
         return summary.reset_index().to_json(orient="records", indent=2)
+
+    if name == "filter_cars_by_mpg":
+        thr = float(args["min_mpg"])
+        df = DATASETS["mtcars"]
+        out = df.loc[df["mpg"] > thr].head(15)
+        return out.to_json(orient="records", indent=2)
 
     raise ValueError(f"Unknown tool: {name}")
 

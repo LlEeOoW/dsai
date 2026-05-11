@@ -28,10 +28,15 @@ AI_PROVIDER = "ollama"  # Change to "openai" if using OpenAI
 # Ollama configuration
 PORT = 11434
 OLLAMA_HOST = paste0("http://localhost:", PORT)
-OLLAMA_MODEL = "llama3.2:latest"  # Use a model that supports JSON output
+# Must match a name from `ollama list` on your machine (e.g. gemma3:latest, llama3.2:latest)
+OLLAMA_MODEL = "gemma3:latest"
 
-# OpenAI configuration
-if (file.exists(".env")){  readRenviron(".env")  } else {  warning(".env file not found. Make sure it exists in the project root.") }
+# OpenAI configuration (only needed when AI_PROVIDER is "openai")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (AI_PROVIDER == "openai") {
+  warning(".env file not found. Create one in the project root with OPENAI_API_KEY=... when using OpenAI.")
+}
 OPENAI_API_KEY = Sys.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = "gpt-4o-mini"  # Low-cost model
 
@@ -142,11 +147,24 @@ query_ai_quality_control = function(prompt, provider = AI_PROVIDER) {
       stream = FALSE
     )
     
+    # req_error(is_error = ~FALSE) lets us read status + body on failure (e.g. HTTP 404)
     res = request(url) %>%
       req_body_json(body) %>%
       req_method("POST") %>%
+      req_error(is_error = function(resp) FALSE) %>%
       req_perform()
-    
+    if (resp_status(res) >= 400) {
+      body_txt = tryCatch(resp_body_string(res), error = function(e) "")
+      stop(
+        "Ollama request failed (HTTP ", resp_status(res), ") at ", url, ".\n",
+        if (nzchar(body_txt)) paste0("Response: ", body_txt, "\n") else "",
+        "Typical fix for HTTP 404: install the model — in a terminal run:\n",
+        "  ollama pull ", OLLAMA_MODEL, "\n",
+        "Then check the exact name with: ollama list\n",
+        "and set OLLAMA_MODEL in this script to match. Ensure the Ollama app is running.",
+        call. = FALSE
+      )
+    }
     response = resp_body_json(res)
     output = response$message$content
     

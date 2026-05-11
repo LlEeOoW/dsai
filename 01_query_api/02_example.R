@@ -10,25 +10,21 @@
 library(httr2)
 library(jsonlite)
 
-# Load environment variables from .env file
-readRenviron(".env")
+# Load environment variables from .env (optional)
+if (file.exists(".env")) readRenviron(".env")
 TEST_API_KEY = Sys.getenv("TEST_API_KEY")
 
-# Create request object
-req = request("https://reqres.in/api/users/2") |>
-  req_headers(`x-api-key` = TEST_API_KEY) |>
-  req_method("GET")
+# Create request (JSONPlaceholder: no Cloudflare, works in all networks)
+req = request("https://jsonplaceholder.typicode.com/users/1") |>
+  req_headers("User-Agent" = "Mozilla/5.0 (compatible; R-httr2/1.0)")
+if (nzchar(TEST_API_KEY)) req = req_headers(req, `x-api-key` = TEST_API_KEY)
+req = req_method(req, "GET")
 
-# Execute request and store result as object
+# Execute request and print response
 resp = req_perform(req)
-
-# Check status
-resp$status_code # 200 = success
-# Return response as a json
-resp_body_json(resp)
-
-# Or use this if you want to convert the response to a string first and then to a list
-fromJSON(resp_body_string(resp))
+cat("Status Code:", resp_status(resp), "\n")
+data = resp_body_json(resp)
+print(data)
 
 # Clear environment
 rm(list = ls())

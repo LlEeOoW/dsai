@@ -29,19 +29,24 @@ TEST_API_KEY = os.getenv("TEST_API_KEY")
 
 ## 1. Make API Request ###########################
 
-# Execute query and save response as object
-response = requests.get(
-    "https://reqres.in/api/users/2",
-    headers={"x-api-key": TEST_API_KEY},
-)
+# Execute query (JSONPlaceholder: no Cloudflare, works in all networks)
+url = "https://jsonplaceholder.typicode.com/users/1"
+headers = {"Accept": "application/json"}
+if os.getenv("TEST_API_KEY"):
+    headers["x-api-key"] = os.getenv("TEST_API_KEY")
+response = requests.get(url, headers=headers)
 
 ## 2. Inspect Response ###########################
 
 # View response status code (200 = success)
 print(response.status_code)
 
-# Extract the response as JSON and print
-print(response.json())
+# Only parse JSON when response is OK and looks like JSON (avoid crash when server returns HTML)
+if response.status_code == 200 and response.text.strip() and not response.text.strip().startswith("<"):
+    print(response.json())
+else:
+    print("API returned HTML or error.")
+    print("Response preview:", (response.text[:120] + "...") if len(response.text) > 120 else response.text)
 
 
 # Clear environment (optional in short scripts, but shown for parity

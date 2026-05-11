@@ -17,6 +17,11 @@ library(dplyr)  # for data wrangling
 library(broom)  # for tidy statistical output
 library(readr)  # for reading CSV files
 
+# Format p-values so very small values do not print as 0 after rounding
+fmt_p = function(p) {
+  format.pval(as.numeric(p), digits = 4, eps = 0.0001, na.form = "NA")
+}
+
 ## 0.2 Load Quality Control Scores ####################################
 
 # Load pre-computed quality control scores for reports from 3 different prompts
@@ -84,7 +89,7 @@ cat("\n")
 # If p-value >= 0.05, variances are not significantly different (can assume equal variance)
 var_equal = bartlett_result$p.value >= 0.05
 cat("📊 Equal Variance Assumption: ", ifelse(var_equal, "✅ Can assume equal variance", "❌ Do NOT assume equal variance"), "\n")
-cat("   (p-value = ", round(bartlett_result$p.value, 4), ")\n\n")
+cat("   (p-value = ", fmt_p(bartlett_result$p.value), ")\n\n")
 
 # 3. TWO-GROUP COMPARISON: T-TEST ###################################
 
@@ -115,11 +120,11 @@ cat("💡 Interpretation:\n")
 if (t_test_tidy$p.value < 0.05) {
   cat("   ✅ The difference between Prompt A and Prompt B is statistically significant.\n")
   cat("   ✅ Prompt ", ifelse(mean(prompt_a_scores) > mean(prompt_b_scores), "A", "B"), 
-      " performs significantly better (p = ", round(t_test_tidy$p.value, 4), ").\n")
+      " performs significantly better (p = ", fmt_p(t_test_tidy$p.value), ").\n")
 } else {
   cat("   ❌ The difference between Prompt A and Prompt B is NOT statistically significant.\n")
   cat("   ❌ We cannot conclude that one prompt performs better than the other (p = ", 
-      round(t_test_tidy$p.value, 4), ").\n")
+      fmt_p(t_test_tidy$p.value), ").\n")
 }
 cat("\n")
 
@@ -149,7 +154,7 @@ f_statistic = anova_result$statistic
 p_value = anova_result$p.value
 
 cat("📊 F-statistic: ", round(f_statistic, 4), "\n")
-cat("📊 p-value: ", round(p_value, 4), "\n\n")
+cat("📊 p-value: ", fmt_p(p_value), "\n\n")
 
 ## 4.2 Interpret ANOVA Results #################################
 
@@ -157,12 +162,12 @@ cat("💡 Interpretation:\n")
 if (p_value < 0.05) {
   cat("   ✅ At least one prompt performs significantly differently from the others.\n")
   cat("   ✅ The F-statistic (", round(f_statistic, 4), ") is significant (p = ", 
-      round(p_value, 4), ").\n")
+      fmt_p(p_value), ").\n")
   cat("   ✅ We can conclude that prompt choice significantly affects quality control scores.\n")
 } else {
   cat("   ❌ We cannot conclude that prompts differ significantly.\n")
   cat("   ❌ The F-statistic (", round(f_statistic, 4), ") is not significant (p = ", 
-      round(p_value, 4), ").\n")
+      fmt_p(p_value), ").\n")
   cat("   ❌ Prompt choice does not appear to significantly affect quality control scores.\n")
 }
 cat("\n")
@@ -183,9 +188,9 @@ formality_stats = scores %>%
 print(formality_stats)
 cat("\n")
 
-# ANOVA for formality
-formality_anova = oneway.test(formula = formality ~ prompt_id, data = scores, var.equal = FALSE)
-formality_anova_tidy = broom::tidy(formality_anova)
+# One-way ANOVA for formality (classic ANOVA; avoids Welch issues when spreads differ)
+formality_aov = aov(formula = formality ~ prompt_id, data = scores)
+formality_anova_tidy = broom::tidy(formality_aov)
 
 cat("📋 Formality ANOVA Results:\n")
 print(formality_anova_tidy)
@@ -205,9 +210,9 @@ succinctness_stats = scores %>%
 print(succinctness_stats)
 cat("\n")
 
-# ANOVA for succinctness
-succinctness_anova = oneway.test(formula = succinctness ~ prompt_id, data = scores, var.equal = FALSE)
-succinctness_anova_tidy = broom::tidy(succinctness_anova)
+# One-way ANOVA for succinctness (Prompt B has zero within-group variance; Welch ANOVA is not suitable)
+succinctness_aov = aov(formula = succinctness ~ prompt_id, data = scores)
+succinctness_anova_tidy = broom::tidy(succinctness_aov)
 
 cat("📋 Succinctness ANOVA Results:\n")
 print(succinctness_anova_tidy)

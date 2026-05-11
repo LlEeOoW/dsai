@@ -13,6 +13,8 @@
 #
 # How to run locally:
 #   Rscript -e "plumber::plumb('08_function_calling/mcp_plumber/plumber.R')$run(port=8000)"
+#   Plumber 2.x (if $run errors): plumber::pr_run(plumber::plumb('08_function_calling/mcp_plumber/plumber.R'), port=8000, host='127.0.0.1')
+#   Or: source("08_function_calling/mcp_plumber/runme.R")
 #
 # How to deploy to Posit Connect:
 #   See deployme.R
@@ -47,6 +49,20 @@ TOOLS <- list(
       ),
       required = list("dataset_name")
     )
+  ),
+  list(
+    name        = "filter_cars_by_mpg",
+    description = "Return up to 15 rows from mtcars where mpg is strictly greater than min_mpg.",
+    inputSchema = list(
+      type       = "object",
+      properties = list(
+        min_mpg = list(
+          type        = "number",
+          description = "Keep rows with mpg greater than this value."
+        )
+      ),
+      required = list("min_mpg")
+    )
   )
 )
 
@@ -77,6 +93,14 @@ run_tool <- function(name, args) {
       tidyr::pivot_wider(names_from = stat, values_from = value)
 
     return(toJSON(result, auto_unbox = TRUE, pretty = TRUE))
+  }
+
+  if (name == "filter_cars_by_mpg") {
+    thr <- as.numeric(args$min_mpg)
+    out <- mtcars |>
+      filter(mpg > thr) |>
+      slice_head(n = 15)
+    return(toJSON(out, auto_unbox = TRUE, pretty = TRUE))
   }
 
   stop(paste("Unknown tool:", name))

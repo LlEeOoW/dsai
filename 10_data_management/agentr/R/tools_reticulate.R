@@ -228,7 +228,13 @@ run_web_search = function(query) {
       if (is.null(out)) {
         "(No results.)"
       } else {
-        trimws(as.character(out))
+        outc = trimws(as.character(out))
+        # SerperDevTool may return a character vector of length > 1
+        if (length(outc) > 1L) {
+          paste(outc, collapse = "\n")
+        } else {
+          outc
+        }
       }
     },
     error = function(e) {

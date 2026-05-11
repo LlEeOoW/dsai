@@ -55,10 +55,15 @@ def main() -> None:
 
     headers = {"Content-Type": "application/json"}
     connect_viewer_key = os.getenv("CONNECT_VIEWER_KEY", "").strip()
-    # If CONNECT_VIEWER_KEY is set in .env, include Bearer auth automatically.
-    # Keep this for secured deployments (common on Connect); unset for public endpoints.
+    if not connect_viewer_key:
+        connect_viewer_key = os.getenv("CONNECT_API_KEY", "").strip()
+    # Posit Connect REST API uses "Key"; set CONNECT_VIEWER_AUTH=Bearer if needed.
+    auth_style = os.getenv("CONNECT_VIEWER_AUTH", "KEY").strip().upper()
     if connect_viewer_key:
-        headers["Authorization"] = f"Bearer {connect_viewer_key}"
+        if auth_style == "BEARER":
+            headers["Authorization"] = f"Bearer {connect_viewer_key}"
+        else:
+            headers["Authorization"] = f"Key {connect_viewer_key}"
 
     print(f"# Smoke test at {base}\n")
 

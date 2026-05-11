@@ -1,14 +1,31 @@
-# 04_agents.R
+# 03_agents_with_function_calling.R
 
-# This script demonstrates this course's approach to building agents.
+# This script demonstrates this course's approach to building agents with optional tools.
 
-# Load packages
-require(ollamar) # for interacting with the LLM
-require(dplyr) # for data wrangling
-require(stringr) # for string operations
+# Load packages (quiet: no startup messages or version-built-under warnings)
+suppressWarnings(suppressPackageStartupMessages({
+    library(ollamar) # for interacting with the LLM
+    library(dplyr) # for data wrangling
+    library(stringr) # for string operations
+    library(jsonlite) # parse tool arguments when API returns JSON text
+}))
 
 # Select model of interest
 MODEL = "smollm2:1.7b"
+
+# Parse tool arguments: Ollama may return JSON text or a list
+parse_tool_arguments = function(args) {
+    if (is.null(args)) {
+        stop("Tool call has no arguments.")
+    }
+    if (is.character(args) && length(args) == 1L) {
+        args = jsonlite::fromJSON(args, simplifyVector = TRUE)
+    }
+    if (!is.list(args)) {
+        args = as.list(args)
+    }
+    args
+}
 
 # Let's write a wrapper function that will run a single agent.
 
@@ -25,7 +42,7 @@ MODEL = "smollm2:1.7b"
 #' @note If the agent has NO tools, perform a standard chat.
 #' @importFrom ollamar chat
 #' @return A list of responses from the agent.
-#' @export 
+#' @export
 agent = function(messages, model = "smollm2:1.7b", output = "text", tools = NULL, all = FALSE){
 
     # # Testing values
@@ -51,8 +68,8 @@ agent = function(messages, model = "smollm2:1.7b", output = "text", tools = NULL
     #         )
     #     )
     # )
-    # tools = list(tool_add_two_numbers); 
-    # model = "smollm2:1.7b"; 
+    # tools = list(tool_add_two_numbers);
+    # model = "smollm2:1.7b";
     # output = "tools";
 
     # If the agent has NO tools, perform a standard chat
@@ -60,18 +77,19 @@ agent = function(messages, model = "smollm2:1.7b", output = "text", tools = NULL
         resp = chat(model = model, messages = messages, output = output, stream = FALSE)
         return(resp)
     } else {
-        
+
     # If the agent has any tools, perform a tool call
-    resp = chat(model = model, messages = messages, tools = tools, output = output, stream = FALSE)
+    # suppressMessages hides ollamar's "Tools called: ..." message() output
+    resp = suppressMessages(chat(model = model, messages = messages, tools = tools, output = output, stream = FALSE))
 
     # For any given tool call, execute the tool call
     n_resp = length(resp)
-    if(n_resp > 0){
-    for(i in 1:n_resp) {
-    # i = 1
-    # Save the result of the tool call in an 'output' field 
-    resp[[i]]$output = do.call(resp[[i]]$name, resp[[i]]$arguments)
+    if (n_resp == 0L) {
+        stop("No tool calls returned. Check that Ollama is running and the model supports tools.")
     }
+    for (i in 1:n_resp) {
+        # Save the result of the tool call in an 'output' field
+        resp[[i]]$output = do.call(resp[[i]]$name, parse_tool_arguments(resp[[i]]$arguments))
     }
     if(all) { return(resp) } else { return(resp[[n_resp]]$output) }
     }
@@ -113,35 +131,64 @@ tool_get_table = list(
             required = list("df"),
             properties = list(
                 df = list(
-                    type = "data.frame", 
+                    type = "data.frame",
                     description = "The data.frame to convert to a markdown table using knitr::kable()")
             )
         )
     )
 )
 
-# tools = list(tool_add_two_numbers); 
-model = "smollm2:1.7b"; 
+# Average of a numeric vector (model passes JSON array as list)
+calculate_average = function(numbers) {
+    mean(unlist(numbers))
+}
+
+tool_calculate_average = list(
+    type = "function",
+    "function" = list(
+        name = "calculate_average",
+        description = "Calculate the arithmetic mean of a list of numbers",
+        parameters = list(
+            type = "object",
+            required = list("numbers"),
+            properties = list(
+                numbers = list(
+                    type = "array",
+                    items = list(type = "numeric"),
+                    description = "Numeric values to include in the average"
+                )
+            )
+        )
+    )
+)
+
+# tools = list(tool_add_two_numbers);
+model = "smollm2:1.7b";
 
 # Trying to call a standard chat
 resp = create_message(role = "user", content = "Write a haiku about cheese.") |>
     agent(model = model, output = "text")
 resp
 
-# Try calling tool #1
+# Try calling tool #1 (all = TRUE keeps the full tool list so we can read resp[[1]]$output)
 resp = create_message(role = "user", content = "Add 3 + 5.") |>
-    agent(model = model, output = "tools", tools = list(tool_add_two_numbers))
+    agent(model = model, output = "tools", tools = list(tool_add_two_numbers), all = TRUE)
 resp
 
 resp[[1]]$output
 
 # Try calling tool #2
 resp2 = create_message(role = "user", content = paste0("Place the numeric value ", resp[[1]]$output, " into a 1x1 data.frame with column name 'x' and format as a markdown table.")) |>
-    agent(model = model, output = "tools", tools = list(tool_get_table))
-resp2 
+    agent(model = model, output = "tools", tools = list(tool_get_table), all = TRUE)
+resp2
 
 # Compare against manual approach
 knitr::kable(data.frame(x = resp[[1]]$output), format = "markdown")
+
+# Try calling tool #3 (calculate_average)
+resp3 = create_message(role = "user", content = "What is the average of 10, 20, and 30?") |>
+    agent(model = model, output = "tools", tools = list(tool_calculate_average))
+resp3
 
 # We can use this agent() function to rapidly build and test out agents with or without tools.
 

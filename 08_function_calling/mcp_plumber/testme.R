@@ -31,27 +31,23 @@ library(dplyr)
 #   R -e "plumber::plumb('08_function_calling/mcp_plumber/plumber.R')$run(port=8000)"
 # Or, in RStudio: open plumber.R and click the "Run API" button.
 
-if (file.exists(".env")) { readRenviron(".env") }else{ warning(".env file not found. Make sure it exists in the project root.") }
+if (file.exists(".env")) { readRenviron(".env") } else { warning(".env file not found. Make sure it exists in the project root.") }
 
-# Set server base URL.
-# You can use your local API (if you execut runme.R)
-# SERVER <- "http://127.0.0.1:8000/mcp"
-# Or you can use my deployed API (or udpate to yours), assuming you provide a Posit Connect viewer API key.
-SERVER <- "https://connect.systems-apps.com/plumbermcp/mcp"
+# Set server base URL (local lab default — override with env MCP_SERVER or edit).
+SERVER <- Sys.getenv("MCP_SERVER", unset = "http://127.0.0.1:8000/mcp")
 
 # ── Helper: send one JSON-RPC request ───────────────────────
 
-mcp_request <- function(method, params = list(), id = 1L, headers = c()) {
-  # Testing values
-  # method = "initialize"; params = list( protocolVersion = "2025-03-26",  clientInfo      = list(name = "r-test-client", version = "0.1.0"), capabilities    = list()); id = 1
-
+mcp_request <- function(method, params = list(), id = 1L) {
   body <- list(jsonrpc = "2.0", id = id, method = method, params = params)
 
-  resp <- request(SERVER) |>
-    req_headers(
-      "Content-Type" = "application/json", 
-      # Only need this for Posit Connect, but Ollama doesn't care and will accept it.
-      "Authorization" = paste0("Key ", Sys.getenv("CONNECT_API_KEY"))) |>
+  req <- request(SERVER) |>
+    req_headers("Content-Type" = "application/json")
+  key <- Sys.getenv("CONNECT_API_KEY", "")
+  if (nzchar(key)) {
+    req <- req |> req_headers("Authorization" = paste0("Key ", key))
+  }
+  resp <- req |>
     req_body_raw(toJSON(body, auto_unbox = TRUE, null = "null")) |>
     req_perform()
 
@@ -77,7 +73,7 @@ init <- mcp_request("initialize", list(
   protocolVersion = "2025-03-26",
   clientInfo      = list(name = "r-test-client", version = "0.1.0"),
   capabilities    = list()
-), headers = headers)
+))
 
 cat("Server:", init$result$serverInfo$name, "v", init$result$serverInfo$version, "\n")
 
@@ -101,6 +97,16 @@ result <- mcp_request("tools/call", list(
 
 # Tool output: JSON summary string in first content block
 mcp_text_block(result) %>% fromJSON() %>% print()
+
+# 3b. CALL SECOND TOOL — filter_cars_by_mpg (Stage 3) ############################
+
+result2 <- mcp_request("tools/call", list(
+  name      = "filter_cars_by_mpg",
+  arguments = list(min_mpg = 25)
+))
+cat("filter_cars_by_mpg (mpg > 25):\n")
+cat(mcp_text_block(result2))
+cat("\n")
 
 # 4. CONNECT AN LLM TO THE MCP SERVER ####################
 
@@ -175,8 +181,9 @@ ollama_tools
 
 ## 4c. Ask the LLM a question that requires the tool -----
 
+# Prompt written so the model should choose filter_cars_by_mpg (Stage 3) or summarize_dataset
 messages <- create_message(role = "user",
-  content = "Give me a summary of the iris dataset.")
+  content = "Using only the available tools, list mtcars cars with mpg greater than 25.")
 
 # ollamar expects tools = list(tool1, tool2, ...) — same pattern as 02_function_calling.R
 resp <- chat(model = MODEL, messages = messages,
@@ -185,14 +192,21 @@ resp <- chat(model = MODEL, messages = messages,
 
 ## 4d. Execute the tool call against the MCP server ------
 
-tool_call <- resp[[1]]
+tc <- resp[[1]]
+# ollamar may return either list(name=, arguments=) or nested $function
+fn <- tc$name
+ra <- tc$arguments
+if (is.null(fn) && !is.null(tc[["function"]])) {
+  fn <- tc[["function"]]$name
+  ra <- tc[["function"]]$arguments
+}
+if (is.character(ra) && length(ra) == 1L && nzchar(ra[1])) {
+  ra <- jsonlite::fromJSON(ra)
+}
 
-result <- mcp_request("tools/call", list(
-  name      = tool_call$name,
-  arguments = tool_call$arguments
-))
+result <- mcp_request("tools/call", list(name = fn, arguments = ra))
 
-cat("LLM chose tool:", tool_call$name, "\n")
+cat("LLM chose tool:", fn, "\n")
 # mcp_request() returns the full JSON-RPC object; tool output lives under result$result
 cat(mcp_text_block(result))
 

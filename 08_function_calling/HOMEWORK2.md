@@ -81,6 +81,83 @@ Submit via Canvas by the due date specified in the course schedule.
 
 ---
 
+## Appendix: Submission package for this repo (`LlEeOoW/dsai`)
+
+*Copy the sections below into your single `.docx`. Replace screenshot placeholders with your own images. The **Writing** section must be **your own words** (course rule: not AI-generated); use the outline only as a guide.*
+
+**Base URL for links:** `https://github.com/LlEeOoW/dsai/blob/main/`
+
+### Writing component (3+ paragraphs) — outline only
+
+Use this structure; write each paragraph yourself:
+
+1. **What the system does** — You built three pieces: (a) a **multi-agent** stock workflow using Alpha Vantage daily prices, (b) a **CSV RAG** over [`custom_topics.csv`](../07_rag/data/custom_topics.csv) with token matching and an Ollama answer, (c) **function calling** via an in-process FDA shortage workflow and/or an **MCP** server exposing dataset tools.
+2. **How components connect** — Data flows: fetched prices → Agent 1 → Agent 2 → Agent 3; RAG: query → `search()` JSON → LLM; tools: model chooses `get_shortages` or MCP `summarize_dataset` / `filter_cars_by_mpg` → JSON or text to the client.
+3. **Design choices and challenges** — Examples you can mention: small Ollama models and grounding (plain-text lines vs tables), API keys in `.env`, running Plumber from repo root, MCP `MCP_SERVER` URL.
+
+### Git repository links (paste into Word as hyperlinks)
+
+| Component | Link |
+|-----------|------|
+| Multi-agent orchestration | [06_multi_agent_lab.R](https://github.com/LlEeOoW/dsai/blob/main/06_agents/06_multi_agent_lab.R) |
+| RAG implementation | [05_custom_csv_rag.R](https://github.com/LlEeOoW/dsai/blob/main/07_rag/05_custom_csv_rag.R) |
+| Function calling (agents + tools) | [04_multiple_agents_with_function_calling.R](https://github.com/LlEeOoW/dsai/blob/main/08_function_calling/04_multiple_agents_with_function_calling.R) |
+| MCP / tool server (optional but strong) | [plumber.R](https://github.com/LlEeOoW/dsai/blob/main/08_function_calling/mcp_plumber/plumber.R) · [testme.R](https://github.com/LlEeOoW/dsai/blob/main/08_function_calling/mcp_plumber/testme.R) |
+| Helper agents | [functions.R](https://github.com/LlEeOoW/dsai/blob/main/08_function_calling/functions.R) (used by function-calling scripts) |
+
+### Screenshots checklist (3–4+)
+
+| # | What to capture |
+|---|------------------|
+| 1 | Console or terminal: multi-agent run (e.g. `Rscript 06_agents/06_multi_agent_lab.R`) showing multiple agent stages / outputs. |
+| 2 | RAG: search JSON or answer text from [`05_custom_csv_rag.R`](https://github.com/LlEeOoW/dsai/blob/main/07_rag/05_custom_csv_rag.R). |
+| 3 | Function calling: e.g. `Tools called: get_shortages` and Agent 2 output from [`04_multiple_agents_with_function_calling.R`](https://github.com/LlEeOoW/dsai/blob/main/08_function_calling/04_multiple_agents_with_function_calling.R). |
+| 4 | Optional: MCP client test — `tools/list`, direct `filter_cars_by_mpg`, or “LLM chose tool” from [`mcp_plumber/testme.R`](https://github.com/LlEeOoW/dsai/blob/main/08_function_calling/mcp_plumber/testme.R). |
+
+### Documentation
+
+#### System architecture
+
+| Stage | Role (summary) | Script |
+|-------|------------------|--------|
+| Multi-agent | Three Ollama agents: interpret price data → analysis → daily + 30-day narrative | [`06_agents/06_multi_agent_lab.R`](../06_agents/06_multi_agent_lab.R) |
+| RAG | `search()` returns top matching rows as JSON; system prompt restricts answers to retrieved context | [`07_rag/05_custom_csv_rag.R`](../07_rag/05_custom_csv_rag.R) |
+| Tools | `get_shortages` (FDA API) via `agent_run` + tool metadata; optional MCP tools on HTTP `/mcp` | [`04_multiple_agents_with_function_calling.R`](04_multiple_agents_with_function_calling.R), [`mcp_plumber/plumber.R`](mcp_plumber/plumber.R) |
+
+#### RAG data source
+
+| File | Description |
+|------|-------------|
+| [`07_rag/data/custom_topics.csv`](../07_rag/data/custom_topics.csv) | Columns: `Name`, `Category`, `Content`, `Keywords`. Short topic notes (deployment, Ollama, APIs, RAG, etc.). |
+
+**Search function:** tokenize query, OR-match tokens against a `haystack` built from those columns; return up to 5 rows (content truncated) as JSON for the LLM.
+
+#### Tool functions
+
+| Name | Purpose | Parameters | Returns |
+|------|---------|------------|---------|
+| `get_shortages` | FDA Drug Shortages API | `category` (therapeutic class), `limit` | `tibble` of shortage rows |
+| `summarize_dataset` (MCP) | Numeric summary stats | `dataset_name`: `mtcars` or `iris` | JSON string of summary table |
+| `filter_cars_by_mpg` (MCP) | Filter `mtcars` by mpg | `min_mpg` (number) | JSON (up to 15 rows) |
+
+#### Technical details
+
+- **Ollama:** local `http://localhost:11434`; models such as `smollm2:135m`, `smollm2:1.7b` (see each script’s `MODEL`).
+- **Alpha Vantage:** `API_KEY` in [`06_agents/.env`](../06_agents/.env.example) (copy to `.env`).
+- **MCP (Plumber):** default `http://127.0.0.1:8000/mcp`; optional `CONNECT_API_KEY` for Connect-style auth in [`testme.R`](mcp_plumber/testme.R).
+- **R packages:** `ollamar`, `httr2`, `dplyr`, `jsonlite`, `plumber`, `readr`, `stringr`, etc., per script headers.
+- **Repo layout:** agents under `06_agents/`, RAG under `07_rag/`, function calling + MCP under `08_function_calling/`.
+
+#### Usage instructions
+
+1. Install [Ollama](https://ollama.com/) and pull the models your scripts reference.
+2. **Multi-agent lab:** `cd` to `06_agents`, add `.env` with `API_KEY`, run `Rscript 06_multi_agent_lab.R` (or run from repo root with path adjusted).
+3. **RAG:** ensure `07_rag/data/custom_topics.csv` exists; from repo root, `Rscript 07_rag/05_custom_csv_rag.R` (or set working directory to `07_rag` per script).
+4. **Function calling:** from repo root, `Rscript 08_function_calling/04_multiple_agents_with_function_calling.R`.
+5. **MCP:** `Rscript 08_function_calling/mcp_plumber/runme.R` (or `plumb()$run` / `pr_run` as in [`plumber.R`](mcp_plumber/plumber.R) comments); then `Rscript 08_function_calling/mcp_plumber/testme.R` with `MCP_SERVER` if not on port 8000.
+
+---
+
 ![](../../docs/images/homework.png)
 
 ---

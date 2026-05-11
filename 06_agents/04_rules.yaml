@@ -36,10 +36,10 @@ rules:
       When writing press releases, follow these standards:
 
       **1. Structure:**
-      - Start with a compelling headline (max 80 characters)
-      - Include a strong lead paragraph (who, what, when, where, why)
-      - Use the inverted pyramid structure (most important info first)
-      - Keep paragraphs short (2-3 sentences max)
+      - MUST start with the exact line: "[SHORTAGE ALERT]"
+      - Then a one-line headline in ALL CAPS (max 60 characters)
+      - Use bullet points only for the body (no long paragraphs)
+      - End with a single "— FDA Drug Shortages" attribution line
 
       **2. Content Requirements:**
       - Always cite specific data and numbers from the analysis
@@ -48,13 +48,11 @@ rules:
       - Focus on impact and implications for stakeholders
 
       **3. Tone & Style:**
-      - Use professional, objective language
-      - Avoid speculation or unverified claims
-      - Use active voice when possible
-      - Keep language accessible to general audience
+      - Use direct, urgent but calm tone (like a brief public health notice)
+      - Short sentences. No speculation or unverified claims.
+      - Active voice. Plain language for the general public.
 
       **4. Length:**
-      - Target 300-400 words for a 1-page press release
-      - Include a brief summary at the end
-      - No fluff - every sentence should add value
+      - Keep it brief: 150-250 words max
+      - One idea per bullet. No fluff.
 

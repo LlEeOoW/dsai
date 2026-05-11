@@ -10,6 +10,8 @@
 
 Build a multi-agent system where agents use function calling to interact with external data sources or APIs. Create custom tools and chain agents together to complete a workflow.
 
+Reference scripts: [`functions.R`](functions.R), [`functions.py`](functions.py), [`04_multiple_agents_with_function_calling.R`](04_multiple_agents_with_function_calling.R), [`04_multiple_agents_with_function_calling.py`](04_multiple_agents_with_function_calling.py).
+
 ---
 
 ## ✅ Your Tasks
@@ -24,7 +26,7 @@ Build a multi-agent system where agents use function calling to interact with ex
 
 - [ ] Design Agent 1: Uses your custom tool to fetch or process data
 - [ ] Design Agent 2: Takes the output from Agent 1 and generates a report or analysis
-- [ ] Use `agent_run()` from [`functions.py`](functions.py) to chain the agents together
+- [ ] Use `agent_run()` from [`functions.R`](functions.R) (R) or [`functions.py`](functions.py) (Python) to chain the agents together
 
 ### Task 3: Test and Refine
 

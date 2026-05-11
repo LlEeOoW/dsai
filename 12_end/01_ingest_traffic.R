@@ -1,13 +1,14 @@
-# 01_ingest_brussels_traffic_counts_realtime.R
+# 01_ingest_traffic.R
 # Ingest Brussels Realtime Traffic Counts (1m, t1)
+# Pairs with 01_ingest_traffic.py
 # Tim Fraser
 #
 # This cron-friendly script fetches the latest traverse-level vehicle counts from
-# the Brussels traffic API and stores normalized rows in SQLite.
+# the Brussels traffic API and stores normalized rows in SQLite keyed by metro_id.
 
 # Run from inside the 12_end/ directory so the paths resolve correctly.
-# Git bash: cd 12_end && Rscript 01_ingest_brussels_traffic_counts_realtime.R
-# Powershell: Set-Location 12_end; Rscript 01_ingest_brussels_traffic_counts_realtime.R
+# Git bash: cd 12_end && Rscript 01_ingest_traffic.R
+# Powershell: Set-Location 12_end; Rscript 01_ingest_traffic.R
 
 # 0. SETUP ###################################
 
@@ -28,11 +29,15 @@ if (file.exists(".env")) readRenviron(".env")
 # Brussels Traffic Vehicle Counts API Documentation here:
 # https://data.mobility.brussels/traffic/api/counts/
 BASE_URL = "https://data.mobility.brussels/traffic/api/counts/"
-BRUSSELS_METRO_ID = 948
+# Brussels (activity default); rows use this metro_id in SQLite.
+METRO_ID = 948
 script_arg = commandArgs(trailingOnly = FALSE)
 script_path = sub("^--file=", "", script_arg[grepl("^--file=", script_arg)][1])
+wd = normalizePath(getwd(), winslash = "/", mustWork = FALSE)
 script_dir = if (!is.na(script_path) && nzchar(script_path)) {
   dirname(normalizePath(script_path, winslash = "/", mustWork = FALSE))
+} else if (basename(wd) == "12_end") {
+  wd
 } else {
   normalizePath("12_end", winslash = "/", mustWork = FALSE)
 }
@@ -42,15 +47,21 @@ DB_PATH = file.path(DATA_DIR, "traffic.db")
 dir.create(DATA_DIR, showWarnings = FALSE, recursive = TRUE)
 
 cat("\n====================================================\n")
-cat("📋 01_ingest_brussels_traffic_counts_realtime.R\n")
+cat("01_ingest_traffic.R | Brussels realtime ingest\n")
 cat("====================================================\n")
-cat("   🧭 metro_id: ", BRUSSELS_METRO_ID, "\n", sep = "")
-cat("   🔗 ", BASE_URL, "\n", sep = "")
+cat("   metro_id: ", METRO_ID, "\n", sep = "")
+cat("   api: ", BASE_URL, "\n", sep = "")
 
 # 2. FETCH DATA ###################################
 
 resp = request(BASE_URL) |>
   req_url_query(request = "live", includeLanes = "false", interval = "1") |>
+  req_retry(
+    max_tries = 5,
+    is_transient = function(resp) {
+      resp_status(resp) %in% c(429L, 500L, 502L, 503L, 504L)
+    }
+  ) |>
   req_perform()
 
 if (resp_status(resp) != 200) {
@@ -90,10 +101,24 @@ raw_df = map2_dfr(
   .x = monitors, .y = body$data,
   .f = ~extract(monitor_id = .x, monitor_payload = .y) )
 
-# Convert Brussels timestamp to a valid UTC timestamp
+# Convert Brussels-local timestamp to UTC string (matches Python parse formats).
+# Vectorized so mutate(observed_at_raw) stays tidyverse-native.
 parse_bxl_time = function(x) {
+  x = as.character(x)
+  n = length(x)
+  out = rep(NA_character_, n)
+  blank = is.na(x) | !nzchar(x) | x == "NA"
   parsed = suppressWarnings(ymd_hm(x, tz = "Europe/Brussels", quiet = TRUE))
-  ifelse(is.na(parsed), NA_character_, format(with_tz(parsed, "UTC"), "%Y-%m-%d %H:%M:%S"))
+  parsed[blank] = NA
+  miss = is.na(parsed) & !blank
+  if (any(miss)) {
+    parsed[miss] = suppressWarnings(
+      parse_date_time(x[miss], orders = "Y/m/d HM", tz = "Europe/Brussels", quiet = TRUE)
+    )
+  }
+  ok = !is.na(parsed)
+  out[ok] = format(with_tz(parsed[ok], "UTC"), "%Y-%m-%d %H:%M:%S")
+  out
 }
 
 # Clean the data!
@@ -107,7 +132,7 @@ df = raw_df |>
   ) |>
   mutate(speed = if_else(speed < 0, true = 0, false = speed)) |>
   transmute(
-    metro_id = BRUSSELS_METRO_ID,
+    metro_id = METRO_ID,
     monitor_id = monitor_id,
     observed_at = observed_at,
     vehicles = vehicles,
@@ -157,7 +182,7 @@ before_count = dbGetQuery(
   FROM traffic
   WHERE metro_id = :metro_id
 ",
-  params = list(metro_id = BRUSSELS_METRO_ID)
+  params = list(metro_id = METRO_ID)
 )$n[[1]]
 
 # Insert the data into the table
@@ -179,7 +204,7 @@ total_rows = dbGetQuery(
   FROM traffic
   WHERE metro_id = :metro_id
 ",
-  params = list(metro_id = BRUSSELS_METRO_ID)
+  params = list(metro_id = METRO_ID)
 )$n[[1]]
 inserted_rows = max(total_rows - before_count, 0)
 

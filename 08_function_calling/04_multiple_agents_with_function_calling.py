@@ -10,6 +10,12 @@
 
 ## 0.1 Load Packages #################################
 
+import os
+
+# Run from any cwd: imports and paths resolve relative to this script
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(_script_dir)
+
 import requests  # for HTTP requests
 import json      # for working with JSON
 import pandas as pd  # for data manipulation
@@ -21,7 +27,7 @@ from datetime import datetime  # for date parsing
 ## 0.2 Load Functions #################################
 
 # Load helper functions for agent orchestration
-from functions import agent_run, df_as_text
+from functions import agent_run
 
 ## 0.3 Configuration #################################
 
@@ -135,18 +141,23 @@ task = "Get data on drug shortages for the category Psychiatry"
 role1 = "I fetch information from the FDA Drug Shortages API"
 result1 = agent_run(role=role1, task=task, model=MODEL, output="tools", tools=[tool_get_shortages])
 
-# result1 will be a DataFrame (the output from get_shortages)
-# Convert it to text for the next agent
-result1_text = df_as_text(result1)
-
-# Agent 2: Data Analyst (no tools)
-# This agent analyzes the data and returns a markdown table
-role2 = "I analyze data in a table format and return a markdown table of currently ongoing shortages."
-result2 = agent_run(role=role2, task=result1_text, model=MODEL, output="text", tools=None)
+# Agent 2: Data Analyst (no tools) — plain lines work better with small models than kable alone
+role2 = (
+    "You are a data analyst. The user lists FDA drug shortage lines (drug | update | availability). "
+    "Reply with 3-6 bullet points summarizing patterns (which drugs, revised vs reverified, availability)."
+)
+lines = result1.head(25).apply(
+    lambda r: f"{r['generic_name']} | {r['update_type']} | {r['availability']}",
+    axis=1,
+).tolist()
+task2 = "Records:\n" + "\n".join(lines)
+result2 = agent_run(role=role2, task=task2, model=MODEL, output="text", tools=None)
 
 # Agent 3: Press Release Writer (no tools)
-# This agent writes a press release based on the analysis
-role3 = "I write a 1-page press release on the currently ongoing shortages."
+role3 = (
+    "You are a communications writer. Write a short press release (3-5 sentences) "
+    "based only on the analysis paragraph you receive."
+)
 result3 = agent_run(role=role3, task=result2, model=MODEL, output="text", tools=None)
 
 # 4. VIEW RESULTS ###################################

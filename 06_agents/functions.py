@@ -152,9 +152,13 @@ def df_as_text(df):
         A markdown-formatted table string
     """
     
-    # Convert DataFrame to markdown table
-    # pandas to_markdown() method creates markdown tables
-    tab = df.to_markdown(index=False)
+    # Convert DataFrame to markdown table (no extra deps; to_markdown() needs tabulate)
+    try:
+        tab = df.to_markdown(index=False)
+    except ImportError:
+        tab = "| " + " | ".join(df.columns) + " |\n" + "\n".join(
+            "| " + " | ".join(df.loc[r].astype(str).tolist()) + " |" for r in df.index
+        )
     return tab
 
 

@@ -5,7 +5,7 @@ library(DBI)
 library(RSQLite)
 
 # Path to the database file
-DB_PATH <- "06_rag/data/rag_example.db"
+DB_PATH <- "07_rag/data/rag_example.db"
 
 # Remove existing database if it exists
 if(file.exists(DB_PATH)) {

@@ -8,7 +8,30 @@
 
 library(httr2)
 
-readRenviron(".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+}
+if (!nzchar(trimws(Sys.getenv("AGENT_PUBLIC_URL", ""))) &&
+    file.exists("10_data_management/agentr/.env")) {
+  readRenviron("10_data_management/agentr/.env")
+}
+
+viewer = trimws(Sys.getenv("CONNECT_VIEWER_KEY", unset = ""))
+if (!nzchar(viewer)) {
+  viewer = trimws(Sys.getenv("CONNECT_API_KEY", unset = ""))
+}
+# Posit Connect REST API uses "Key"; some hosts use "Bearer".
+auth_prefix = toupper(trimws(Sys.getenv("CONNECT_VIEWER_AUTH", unset = "KEY")))
+connect_authorization = function(secret) {
+  if (!nzchar(secret)) {
+    return(NULL)
+  }
+  if (identical(auth_prefix, "BEARER")) {
+    paste("Bearer", secret)
+  } else {
+    paste("Key", secret)
+  }
+}
 
 # 1. REQUESTS ################################################################
 
@@ -24,12 +47,13 @@ if (!nzchar(base)) {
 
 cat("# Smoke test at", base, "\n\n")
 
-
-r1 = httr2::request(paste0(base, "/health")) |>
-  # IF USING DEPLOYED VERSION, ADD THE FOLLOWING HEADER:
-  # httr2::req_headers(
-  #   "Content-Type" = "application/json", 
-  #   "Authorization" = paste("Bearer", Sys.getenv("CONNECT_VIEWER_KEY"))) |>
+req_health = httr2::request(paste0(base, "/health"))
+auth_h = connect_authorization(viewer)
+if (!is.null(auth_h)) {
+  req_health = req_health |>
+    httr2::req_headers(Authorization = auth_h)
+}
+r1 = req_health |>
   httr2::req_timeout(30) |>
   httr2::req_perform()
 
@@ -46,13 +70,14 @@ body = list(
   )
 )
 
-r2 = httr2::request(paste0(base, "/hooks/agent")) |>
+req_agent = httr2::request(paste0(base, "/hooks/agent")) |>
   httr2::req_method("POST") |>
-  httr2::req_headers("Content-Type" = "application/json") |>
-  # IF USING DEPLOYED VERSION, ADD THE FOLLOWING HEADER:
-  # httr2::req_headers(
-  #   "Content-Type" = "application/json", 
-  #   "Authorization" = paste("Bearer", Sys.getenv("CONNECT_VIEWER_KEY"))) |>
+  httr2::req_headers("Content-Type" = "application/json")
+if (!is.null(auth_h)) {
+  req_agent = req_agent |>
+    httr2::req_headers(Authorization = auth_h)
+}
+r2 = req_agent |>
   httr2::req_body_json(body) |>
   httr2::req_timeout(120) |>
   httr2::req_perform()
